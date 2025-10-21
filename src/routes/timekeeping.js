@@ -6,4 +6,6 @@ router.get('/timekeeping/teacher', timeKeepingController.teacherTimekeeping)
 
 router.get('/timekeeping/staff', timeKeepingController.staffTimekeeping)
 
+router.get('/timekeeping/stats', timeKeepingController.getTimekeepingStats)
+
 module.exports = router
