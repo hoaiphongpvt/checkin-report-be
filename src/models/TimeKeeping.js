@@ -53,8 +53,8 @@ const TimeKeeping = sequelize.define(
   },
   {
     tableName: 'ChamCong',
-    timestamps: false, // Không sử dụng createdAt, updatedAt
-    freezeTableName: true, // Không tự động chuyển đổi tên bảng sang số nhiều
+    timestamps: false,
+    freezeTableName: true,
   }
 )
 

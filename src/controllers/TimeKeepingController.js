@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 // Lấy chấm công của teacher (Loai = 2)
 exports.teacherTimekeeping = async (req, res, next) => {
   try {
-    const { startDate, endDate, teacherId, page = 1, limit = 50 } = req.query;
+    const { startDate, endDate, teacherId, noMapPlaceId, nullIslandAddress, page = 1, limit = 50 } = req.query;
     
     // Tạo điều kiện where
     const whereCondition = {
@@ -29,6 +29,18 @@ exports.teacherTimekeeping = async (req, res, next) => {
       whereCondition.ThoiGian = {
         [Op.lte]: new Date(endDate)
       };
+    }
+
+    // Thêm filter cho MapPlaceID IS NULL nếu noMapPlaceId là true
+    if (noMapPlaceId === 'true') {
+      whereCondition.MapPlaceID = {
+        [Op.is]: null
+      };
+    }
+
+    // Thêm filter cho DiaChi = "Null Island" nếu nullIslandAddress là true
+    if (nullIslandAddress === 'true') {
+      whereCondition.DiaChi = 'Null Island';
     }
 
     // Tính toán offset cho pagination
@@ -68,7 +80,7 @@ exports.teacherTimekeeping = async (req, res, next) => {
 // Lấy chấm công của staff (Loai = 1)
 exports.staffTimekeeping = async (req, res, next) => {
   try {
-    const { startDate, endDate, staffId, page = 1, limit = 50 } = req.query;
+    const { startDate, endDate, staffId, noMapPlaceId, nullIslandAddress, page = 1, limit = 50 } = req.query;
     
     // Tạo điều kiện where
     const whereCondition = {
@@ -93,6 +105,18 @@ exports.staffTimekeeping = async (req, res, next) => {
       whereCondition.ThoiGian = {
         [Op.lte]: new Date(endDate)
       };
+    }
+
+    // Thêm filter cho MapPlaceID IS NULL nếu noMapPlaceId là true
+    if (noMapPlaceId === 'true') {
+      whereCondition.MapPlaceID = {
+        [Op.is]: null
+      };
+    }
+
+    // Thêm filter cho DiaChi = "Null Island" nếu nullIslandAddress là true
+    if (nullIslandAddress === 'true') {
+      whereCondition.DiaChi = 'Null Island';
     }
 
     // Tính toán offset cho pagination
@@ -132,7 +156,7 @@ exports.staffTimekeeping = async (req, res, next) => {
 // Lấy thống kê chấm công theo người dùng
 exports.getTimekeepingStats = async (req, res, next) => {
   try {
-    const { userId, startDate, endDate, loai } = req.query;
+    const { userId, startDate, endDate, loai, noMapPlaceId, nullIslandAddress } = req.query;
 
     if (!userId) {
       return res.status(400).json({
@@ -155,6 +179,18 @@ exports.getTimekeepingStats = async (req, res, next) => {
       whereCondition.ThoiGian = {
         [Op.between]: [new Date(startDate), new Date(endDate)]
       };
+    }
+
+    // Thêm filter cho MapPlaceID IS NULL nếu noMapPlaceId là true
+    if (noMapPlaceId === 'true') {
+      whereCondition.MapPlaceID = {
+        [Op.is]: null
+      };
+    }
+
+    // Thêm filter cho DiaChi = "Null Island" nếu nullIslandAddress là true
+    if (nullIslandAddress === 'true') {
+      whereCondition.DiaChi = 'Null Island';
     }
 
     const records = await TimeKeeping.findAll({
