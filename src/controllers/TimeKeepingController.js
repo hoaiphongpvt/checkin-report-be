@@ -4,44 +4,43 @@ const { Op } = require('sequelize');
 // Lấy chấm công của teacher (Loai = 2)
 exports.teacherTimekeeping = async (req, res, next) => {
   try {
-    const { startDate, endDate, teacherId, noMapPlaceId, nullIslandAddress, page = 1, limit = 50 } = req.query;
+    const { startDate, endDate, teacherId, noMapPlaceId, nullIslandAddress, noMapPlaceIdAndNotNullIsland, page = 1, limit = 50 } = req.query;
     
-    // Tạo điều kiện where
-    const whereCondition = {
-      Loai: 2 // Teacher timekeeping
-    };
+    const conditions = [{ Loai: 2 }]; // Teacher timekeeping
 
     // Thêm filter theo teacherId nếu có
     if (teacherId) {
-      whereCondition.NguoiChamCong = teacherId;
+      conditions.push({ NguoiChamCong: teacherId });
     }
 
     // Thêm filter theo khoảng thời gian nếu có
     if (startDate && endDate) {
-      whereCondition.ThoiGian = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
-      };
+      conditions.push({ ThoiGian: { [Op.between]: [new Date(startDate), new Date(endDate)] } });
     } else if (startDate) {
-      whereCondition.ThoiGian = {
-        [Op.gte]: new Date(startDate)
-      };
+      conditions.push({ ThoiGian: { [Op.gte]: new Date(startDate) } });
     } else if (endDate) {
-      whereCondition.ThoiGian = {
-        [Op.lte]: new Date(endDate)
-      };
+      conditions.push({ ThoiGian: { [Op.lte]: new Date(endDate) } });
     }
 
     // Thêm filter cho MapPlaceID IS NULL nếu noMapPlaceId là true
     if (noMapPlaceId === 'true') {
-      whereCondition.MapPlaceID = {
-        [Op.is]: null
-      };
+      conditions.push({ MapPlaceID: { [Op.is]: null } });
     }
 
     // Thêm filter cho DiaChi = "Null Island" nếu nullIslandAddress là true
     if (nullIslandAddress === 'true') {
-      whereCondition.DiaChi = 'Null Island';
+      conditions.push({ DiaChi: 'Null Island' });
     }
+
+    // Thêm filter cho MapPlaceID IS NULL và DiaChi != "Null Island" nếu noMapPlaceIdAndNotNullIsland là true
+    if (noMapPlaceIdAndNotNullIsland === 'true') {
+      conditions.push({
+        MapPlaceID: { [Op.is]: null },
+        DiaChi: { [Op.ne]: 'Null Island' }
+      });
+    }
+
+    const whereCondition = { [Op.and]: conditions };
 
     // Tính toán offset cho pagination
     const offset = (page - 1) * limit;
@@ -80,44 +79,43 @@ exports.teacherTimekeeping = async (req, res, next) => {
 // Lấy chấm công của staff (Loai = 1)
 exports.staffTimekeeping = async (req, res, next) => {
   try {
-    const { startDate, endDate, staffId, noMapPlaceId, nullIslandAddress, page = 1, limit = 50 } = req.query;
+    const { startDate, endDate, staffId, noMapPlaceId, nullIslandAddress, noMapPlaceIdAndNotNullIsland, page = 1, limit = 50 } = req.query;
     
-    // Tạo điều kiện where
-    const whereCondition = {
-      Loai: 1 // Staff timekeeping
-    };
+    const conditions = [{ Loai: 1 }]; // Staff timekeeping
 
     // Thêm filter theo staffId nếu có
     if (staffId) {
-      whereCondition.NguoiChamCong = staffId;
+      conditions.push({ NguoiChamCong: staffId });
     }
 
     // Thêm filter theo khoảng thời gian nếu có
     if (startDate && endDate) {
-      whereCondition.ThoiGian = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
-      };
+      conditions.push({ ThoiGian: { [Op.between]: [new Date(startDate), new Date(endDate)] } });
     } else if (startDate) {
-      whereCondition.ThoiGian = {
-        [Op.gte]: new Date(startDate)
-      };
+      conditions.push({ ThoiGian: { [Op.gte]: new Date(startDate) } });
     } else if (endDate) {
-      whereCondition.ThoiGian = {
-        [Op.lte]: new Date(endDate)
-      };
+      conditions.push({ ThoiGian: { [Op.lte]: new Date(endDate) } });
     }
 
     // Thêm filter cho MapPlaceID IS NULL nếu noMapPlaceId là true
     if (noMapPlaceId === 'true') {
-      whereCondition.MapPlaceID = {
-        [Op.is]: null
-      };
+      conditions.push({ MapPlaceID: { [Op.is]: null } });
     }
 
     // Thêm filter cho DiaChi = "Null Island" nếu nullIslandAddress là true
     if (nullIslandAddress === 'true') {
-      whereCondition.DiaChi = 'Null Island';
+      conditions.push({ DiaChi: 'Null Island' });
     }
+
+    // Thêm filter cho MapPlaceID IS NULL và DiaChi != "Null Island" nếu noMapPlaceIdAndNotNullIsland là true
+    if (noMapPlaceIdAndNotNullIsland === 'true') {
+      conditions.push({
+        MapPlaceID: { [Op.is]: null },
+        DiaChi: { [Op.ne]: 'Null Island' }
+      });
+    }
+
+    const whereCondition = { [Op.and]: conditions };
 
     // Tính toán offset cho pagination
     const offset = (page - 1) * limit;
@@ -156,7 +154,7 @@ exports.staffTimekeeping = async (req, res, next) => {
 // Lấy thống kê chấm công theo người dùng
 exports.getTimekeepingStats = async (req, res, next) => {
   try {
-    const { userId, startDate, endDate, loai, noMapPlaceId, nullIslandAddress } = req.query;
+    const { userId, startDate, endDate, loai, noMapPlaceId, nullIslandAddress, noMapPlaceIdAndNotNullIsland } = req.query;
 
     if (!userId) {
       return res.status(400).json({
@@ -165,33 +163,37 @@ exports.getTimekeepingStats = async (req, res, next) => {
       });
     }
 
-    const whereCondition = {
-      NguoiChamCong: userId
-    };
+    const conditions = [{ NguoiChamCong: userId }];
 
     // Thêm filter theo loại nếu có
     if (loai) {
-      whereCondition.Loai = loai;
+      conditions.push({ Loai: loai });
     }
 
     // Thêm filter theo thời gian nếu có
     if (startDate && endDate) {
-      whereCondition.ThoiGian = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
-      };
+      conditions.push({ ThoiGian: { [Op.between]: [new Date(startDate), new Date(endDate)] } });
     }
 
     // Thêm filter cho MapPlaceID IS NULL nếu noMapPlaceId là true
     if (noMapPlaceId === 'true') {
-      whereCondition.MapPlaceID = {
-        [Op.is]: null
-      };
+      conditions.push({ MapPlaceID: { [Op.is]: null } });
     }
 
     // Thêm filter cho DiaChi = "Null Island" nếu nullIslandAddress là true
     if (nullIslandAddress === 'true') {
-      whereCondition.DiaChi = 'Null Island';
+      conditions.push({ DiaChi: 'Null Island' });
     }
+
+    // Thêm filter cho MapPlaceID IS NULL và DiaChi != "Null Island" nếu noMapPlaceIdAndNotNullIsland là true
+    if (noMapPlaceIdAndNotNullIsland === 'true') {
+      conditions.push({
+        MapPlaceID: { [Op.is]: null },
+        DiaChi: { [Op.ne]: 'Null Island' }
+      });
+    }
+
+    const whereCondition = { [Op.and]: conditions };
 
     const records = await TimeKeeping.findAll({
       where: whereCondition,
