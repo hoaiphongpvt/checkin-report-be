@@ -1,11 +1,22 @@
 const express = require('express')
 const router = express.Router()
-const timeKeepingController = require('../controllers/TimeKeepingController')
+const teacherTimekeepingController = require('../controllers/timekeeping/TeacherTimekeepingController')
+const staffTimekeepingController = require('../controllers/timekeeping/StaffTimekeepingController')
+const timekeepingStatsController = require('../controllers/timekeeping/TimekeepingStatsController')
 
-router.get('/timekeeping/teacher', timeKeepingController.teacherTimekeeping)
+router.get(
+  '/api/timekeeping/teacher',
+  teacherTimekeepingController.getTeacherTimekeeping
+)
 
-router.get('/timekeeping/staff', timeKeepingController.staffTimekeeping)
+router.get(
+  '/api/timekeeping/staff',
+  staffTimekeepingController.getStaffTimekeeping
+)
 
-router.get('/timekeeping/stats', timeKeepingController.getTimekeepingStats)
+router.get(
+  '/api/timekeeping/stats',
+  timekeepingStatsController.getTimekeepingStats
+)
 
 module.exports = router
