@@ -18,14 +18,12 @@ exports.getTimekeepingStats = async (req, res, next) => {
       noMapPlaceIdAndNotNullIsland,
     } = req.query
 
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Thiếu userId',
-      })
-    }
+    const conditions = []
 
-    const conditions = [{ NguoiChamCong: userId }]
+    // Thêm filter theo userId nếu có
+    if (userId) {
+      conditions.push({ NguoiChamCong: userId })
+    }
 
     // Thêm filter theo loại nếu có
     if (loai) {

@@ -1,7 +1,11 @@
 const TimeKeeping = require('../../models/TimeKeeping')
+const Staff = require('../../models/Staff') // Import Staff model
 const { Op } = require('sequelize')
 const Sequelize = require('sequelize') // Import Sequelize
-const { parseDateForFilter, formatDateToMSSQLString } = require('../../utils/formatDate')
+const {
+  parseDateForFilter,
+  formatDateToMSSQLString,
+} = require('../../utils/formatDate')
 
 // Lấy chấm công của staff (Loai = 1)
 exports.getStaffTimekeeping = async (req, res, next) => {
@@ -9,7 +13,7 @@ exports.getStaffTimekeeping = async (req, res, next) => {
     const {
       startDate,
       endDate,
-      staffId,
+      staffName, // Add staffName to query parameters
       noMapPlaceId,
       nullIslandAddress,
       noMapPlaceIdAndNotNullIsland,
@@ -19,10 +23,30 @@ exports.getStaffTimekeeping = async (req, res, next) => {
 
     const conditions = [{ Loai: 1 }] // Staff timekeeping
 
-    // Thêm filter theo staffId nếu có
-    if (staffId) {
-      conditions.push({ NguoiChamCong: staffId })
+    // If staffName is provided, find the StaffIDs that match
+    if (staffName) {
+      const matchingStaffIds = await Staff.findAll({
+        where: Sequelize.where(
+          Sequelize.fn('LOWER', Sequelize.col('StaffName')),
+          { [Op.like]: `%${staffName.toLowerCase()}%` }
+        ),
+        attributes: ['StaffID'],
+      }).then(staffs => staffs.map(s => s.StaffID));
+
+      if (matchingStaffIds.length > 0) {
+        conditions.push({ NguoiChamCong: { [Op.in]: matchingStaffIds } });
+      } else {
+        // If no staff found with the given name, ensure no TimeKeeping records are returned
+        conditions.push({ NguoiChamCong: null }); // Or any condition that yields no results
+      }
     }
+
+    const staffInclude = {
+      model: Staff,
+      as: 'staff', // Alias for the Staff model
+      attributes: ['StaffName'],
+      required: false, // Always use left join to get the name
+    };
 
     // Thêm filter theo khoảng thời gian nếu có
     const parsedStartDate = parseDateForFilter(startDate)
@@ -36,11 +60,23 @@ exports.getStaffTimekeeping = async (req, res, next) => {
             Sequelize.literal(`'${formatDateToMSSQLString(parsedEndDate)}'`),
           ],
         },
-      });
+      })
     } else if (parsedStartDate) {
-      conditions.push({ ThoiGian: { [Op.gte]: Sequelize.literal(`'${formatDateToMSSQLString(parsedStartDate)}'`) } });
+      conditions.push({
+        ThoiGian: {
+          [Op.gte]: Sequelize.literal(
+            `'${formatDateToMSSQLString(parsedStartDate)}'`
+          ),
+        },
+      })
     } else if (parsedEndDate) {
-      conditions.push({ ThoiGian: { [Op.lte]: Sequelize.literal(`'${formatDateToMSSQLString(parsedEndDate)}'`) } });
+      conditions.push({
+        ThoiGian: {
+          [Op.lte]: Sequelize.literal(
+            `'${formatDateToMSSQLString(parsedEndDate)}'`
+          ),
+        },
+      })
     }
 
     if (noMapPlaceId === 'true') {
@@ -67,12 +103,19 @@ exports.getStaffTimekeeping = async (req, res, next) => {
       order: [['ThoiGian', 'DESC']],
       limit: parseInt(limit),
       offset: offset,
+      include: [staffInclude],
     })
+
+    // Map the results to include staffName directly in the record
+    const recordsWithNames = rows.map((record) => ({
+      ...record.toJSON(),
+      StaffName: record.staff ? record.staff.StaffName : '',
+    }))
 
     res.json({
       success: true,
       data: {
-        records: rows,
+        records: recordsWithNames,
         pagination: {
           total: count,
           page: parseInt(page),

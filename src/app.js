@@ -1,7 +1,10 @@
 const express = require('express')
+const cors = require('cors') // Import cors
 const app = express()
 const route = require('./routes')
 const db = require('./config/db')
+
+app.use(cors()) // Use cors middleware
 
 // Connect to database
 db.getConnection()

@@ -1,7 +1,11 @@
 const TimeKeeping = require('../../models/TimeKeeping')
+const Teacher = require('../../models/Teacher') // Import Teacher model
 const { Op } = require('sequelize')
 const Sequelize = require('sequelize') // Import Sequelize
-const { parseDateForFilter, formatDateToMSSQLString } = require('../../utils/formatDate')
+const {
+  parseDateForFilter,
+  formatDateToMSSQLString,
+} = require('../../utils/formatDate')
 
 // Lấy chấm công của teacher (Loai = 2)
 exports.getTeacherTimekeeping = async (req, res, next) => {
@@ -9,7 +13,7 @@ exports.getTeacherTimekeeping = async (req, res, next) => {
     const {
       startDate,
       endDate,
-      teacherId,
+      teacherName, // Add teacherName to query parameters
       noMapPlaceId,
       nullIslandAddress,
       noMapPlaceIdAndNotNullIsland,
@@ -19,10 +23,30 @@ exports.getTeacherTimekeeping = async (req, res, next) => {
 
     const conditions = [{ Loai: 2 }] // Teacher timekeeping
 
-    // Thêm filter theo teacherId nếu có
-    if (teacherId) {
-      conditions.push({ NguoiChamCong: teacherId })
+    // If teacherName is provided, find the TeacherIDs that match
+    if (teacherName) {
+      const matchingTeacherIds = await Teacher.findAll({
+        where: Sequelize.where(
+          Sequelize.fn('LOWER', Sequelize.col('TeacherName')),
+          { [Op.like]: `%${teacherName.toLowerCase()}%` }
+        ),
+        attributes: ['TeacherID'],
+      }).then(teachers => teachers.map(s => s.TeacherID));
+
+      if (matchingTeacherIds.length > 0) {
+        conditions.push({ NguoiChamCong: { [Op.in]: matchingTeacherIds } });
+      } else {
+        // If no teacher found with the given name, ensure no TimeKeeping records are returned
+        conditions.push({ NguoiChamCong: null }); // Or any condition that yields no results
+      }
     }
+
+    const teacherInclude = {
+      model: Teacher,
+      as: 'teacher', // Alias for the Teacher model
+      attributes: ['TeacherName'],
+      required: false, // Always use left join to get the name
+    };
 
     // Thêm filter theo khoảng thời gian nếu có
     const parsedStartDate = parseDateForFilter(startDate)
@@ -38,9 +62,21 @@ exports.getTeacherTimekeeping = async (req, res, next) => {
         },
       })
     } else if (parsedStartDate) {
-      conditions.push({ ThoiGian: { [Op.gte]: Sequelize.literal(`'${formatDateToMSSQLString(parsedStartDate)}'`) } })
+      conditions.push({
+        ThoiGian: {
+          [Op.gte]: Sequelize.literal(
+            `'${formatDateToMSSQLString(parsedStartDate)}'`
+          ),
+        },
+      })
     } else if (parsedEndDate) {
-      conditions.push({ ThoiGian: { [Op.lte]: Sequelize.literal(`'${formatDateToMSSQLString(parsedEndDate)}'`) } })
+      conditions.push({
+        ThoiGian: {
+          [Op.lte]: Sequelize.literal(
+            `'${formatDateToMSSQLString(parsedEndDate)}'`
+          ),
+        },
+      })
     }
 
     if (noMapPlaceId === 'true') {
@@ -67,12 +103,19 @@ exports.getTeacherTimekeeping = async (req, res, next) => {
       order: [['ThoiGian', 'DESC']],
       limit: parseInt(limit),
       offset: offset,
+      include: [teacherInclude],
     })
+
+    // Map the results to include teacherName directly in the record
+    const recordsWithNames = rows.map((record) => ({
+      ...record.toJSON(),
+      TeacherName: record.teacher ? record.teacher.TeacherName : '',
+    }))
 
     res.json({
       success: true,
       data: {
-        records: rows,
+        records: recordsWithNames,
         pagination: {
           total: count,
           page: parseInt(page),

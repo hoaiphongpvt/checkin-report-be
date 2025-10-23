@@ -58,4 +58,22 @@ const TimeKeeping = sequelize.define(
   }
 )
 
+const Staff = require('./Staff');
+const Teacher = require('./Teacher');
+const { Op } = require('sequelize');
+
+TimeKeeping.belongsTo(Staff, {
+  foreignKey: 'NguoiChamCong',
+  targetKey: 'StaffID',
+  as: 'staff',
+  constraints: false // Allow join even if Loai doesn't match
+});
+
+TimeKeeping.belongsTo(Teacher, {
+  foreignKey: 'NguoiChamCong',
+  targetKey: 'TeacherID',
+  as: 'teacher',
+  constraints: false // Allow join even if Loai doesn't match
+});
+
 module.exports = TimeKeeping
